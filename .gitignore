@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.env
+*credentials*
+*.key
+*.pem
+*.cif
+*.pdb
+*.sdf
+*.fasta
+*.a3m
+results/
+state/
