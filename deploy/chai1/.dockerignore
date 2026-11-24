@@ -1,0 +1,2 @@
+# Empty build context — Dockerfile installs purely from pinned PyPI/PyTorch wheels
+*
