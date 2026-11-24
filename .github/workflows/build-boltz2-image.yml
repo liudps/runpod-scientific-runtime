@@ -96,7 +96,7 @@ jobs:
           cp deploy/boltz2/requirements.lock build_reports/requirements.lock
 
       - name: Run Trivy vulnerability & secret scan (JSON + table summary)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         continue-on-error: true
         with:
           image-ref: ${{ steps.meta.outputs.image_name }}@${{ steps.build.outputs.digest }}
@@ -106,7 +106,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Generate SPDX SBOM JSON with Anchore Syft
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.24.4
         continue-on-error: true
         with:
           image: ${{ steps.meta.outputs.image_name }}@${{ steps.build.outputs.digest }}
