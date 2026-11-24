@@ -38,9 +38,11 @@ RUN apt-get update && \
 COPY requirements.lock /tmp/requirements.lock
 
 # Create 100% isolated Python 3.12 venv (NO --system-site-packages) and install exact Phase 3 lockfile
+# Note: force-reinstall pinned nvidia-nccl-cu13==2.30.7 last so nvidia-nccl-cu12 cannot overwrite libnccl.so.2
 RUN python3 -m venv "${BOLTZ_VENV}" && \
     "${BOLTZ_VENV}/bin/pip" install --no-cache-dir --upgrade pip && \
     "${BOLTZ_VENV}/bin/pip" install --no-cache-dir -r /tmp/requirements.lock && \
+    "${BOLTZ_VENV}/bin/pip" install --no-cache-dir --no-deps --force-reinstall "nvidia-nccl-cu13==2.30.7" && \
     rm -f /tmp/requirements.lock
 
 # Verify critical imports & pinned versions at build time (CPU-safe check; CUDA verified at pod runtime)
