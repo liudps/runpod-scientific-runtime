@@ -11,8 +11,8 @@
 FROM runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404@sha256:0a360022e8de4375af99430f84e8b38951acc397252163a37ceac7204d01be35
 
 LABEL org.opencontainers.image.title="runpod-chai1-runtime" \
-      org.opencontainers.image.description="Reproducible Chai-1 (chai_lab 0.6.1) CUDA runtime for Runpod AI drug design" \
-      org.opencontainers.image.version="0.6.1" \
+      org.opencontainers.image.description="Reproducible Chai-1 (chai_lab 0.6.1 + pyarrow 17.0.0) CUDA runtime for Runpod AI drug design" \
+      org.opencontainers.image.version="0.6.2" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -28,18 +28,26 @@ RUN apt-get update && \
 
 # Create 100% isolated Python 3.12 venv (NO --system-site-packages)
 # Install PyTorch 2.6.0+cu124 first (satisfies chai_lab torch<2.7,>=2.3.1), then chai_lab==0.6.1
+# Pin pyarrow==17.0.0 + numpy<2: upstream chai_lab==0.6.1 omits pyarrow required by pandas.to_parquet()
+# in ColabFold MSA generation, and pyarrow>=20 conflicts with numpy 1.x.
 RUN python3 -m venv "${CHAI_VENV}" && \
     "${CHAI_VENV}/bin/pip" install --no-cache-dir --upgrade pip && \
     "${CHAI_VENV}/bin/pip" install --no-cache-dir "torch==2.6.0" --index-url https://download.pytorch.org/whl/cu124 && \
-    "${CHAI_VENV}/bin/pip" install --no-cache-dir "chai_lab==0.6.1" && \
+    "${CHAI_VENV}/bin/pip" install --no-cache-dir "chai_lab==0.6.1" "pyarrow==17.0.0" "numpy<2" && \
     "${CHAI_VENV}/bin/pip" freeze > "${CHAI_VENV}/requirements.lock"
 
-# Build-time import & version verification (CPU-safe; CUDA verified at Pod runtime)
-RUN "${CHAI_VENV}/bin/python" -c "\
-import chai_lab.chai1, torch, numpy, gemmi, rdkit; \
+# Build-time dependency integrity (pip check), import, version & Parquet read/write smoke verification
+RUN "${CHAI_VENV}/bin/pip" check && \
+    "${CHAI_VENV}/bin/python" -c "\
+import importlib.metadata as md, tempfile, pandas as pd, pyarrow, chai_lab.chai1, torch, numpy, gemmi, rdkit; \
+assert md.version('chai_lab') == '0.6.1', f'Unexpected chai_lab: {md.version(\"chai_lab\")}'; \
 assert torch.__version__.startswith('2.6.'), f'Unexpected torch: {torch.__version__}'; \
 assert numpy.__version__.startswith('1.'), f'Unexpected numpy: {numpy.__version__}'; \
-print('Chai-1 runtime verified:', torch.__version__, numpy.__version__)"
+assert pyarrow.__version__ == '17.0.0', f'Unexpected pyarrow: {pyarrow.__version__}'; \
+with tempfile.NamedTemporaryFile(suffix='.pqt') as f: \
+    pd.DataFrame({'seq': ['ACDE']}).to_parquet(f.name); \
+    assert len(pd.read_parquet(f.name)) == 1; \
+print('Chai-1 runtime + pip check + Parquet verified:', md.version('chai_lab'), torch.__version__, numpy.__version__, pyarrow.__version__)"
 
 ENV PATH="${CHAI_VENV}/bin:${PATH}"
 WORKDIR /workspace
