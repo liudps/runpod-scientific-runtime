@@ -38,16 +38,7 @@ RUN python3 -m venv "${CHAI_VENV}" && \
 
 # Build-time dependency integrity (pip check), import, version & Parquet read/write smoke verification
 RUN "${CHAI_VENV}/bin/pip" check && \
-    "${CHAI_VENV}/bin/python" -c "\
-import importlib.metadata as md, tempfile, pandas as pd, pyarrow, chai_lab.chai1, torch, numpy, gemmi, rdkit; \
-assert md.version('chai_lab') == '0.6.1', f'Unexpected chai_lab: {md.version(\"chai_lab\")}'; \
-assert torch.__version__.startswith('2.6.'), f'Unexpected torch: {torch.__version__}'; \
-assert numpy.__version__.startswith('1.'), f'Unexpected numpy: {numpy.__version__}'; \
-assert pyarrow.__version__ == '17.0.0', f'Unexpected pyarrow: {pyarrow.__version__}'; \
-with tempfile.NamedTemporaryFile(suffix='.pqt') as f: \
-    pd.DataFrame({'seq': ['ACDE']}).to_parquet(f.name); \
-    assert len(pd.read_parquet(f.name)) == 1; \
-print('Chai-1 runtime + pip check + Parquet verified:', md.version('chai_lab'), torch.__version__, numpy.__version__, pyarrow.__version__)"
+    "${CHAI_VENV}/bin/python" -c "import importlib.metadata as md, os, pandas as pd, pyarrow, chai_lab.chai1, torch, numpy, gemmi, rdkit; assert md.version('chai_lab') == '0.6.1'; assert torch.__version__.startswith('2.6.'); assert numpy.__version__.startswith('1.'); assert pyarrow.__version__ == '17.0.0'; p = '/tmp/pqt_smoke.pqt'; pd.DataFrame({'seq': ['ACDE']}).to_parquet(p); assert len(pd.read_parquet(p)) == 1; os.remove(p); print('Chai-1 runtime + pip check + Parquet verified:', md.version('chai_lab'), torch.__version__, numpy.__version__, pyarrow.__version__)"
 
 ENV PATH="${CHAI_VENV}/bin:${PATH}"
 WORKDIR /workspace
